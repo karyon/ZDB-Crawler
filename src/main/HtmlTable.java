@@ -53,10 +53,12 @@ class HtmlTable {
 		+"	{color:blue;\n"
 		+"	text-decoration:underline;\n"
 		+"	text-underline-style:single;\n"
-		+"  border:.5pt solid windowtext;\n"
+		+"	border:.5pt solid windowtext;\n"
 		+"	white-space:normal;}\n"
 		+".xl66\n"
-		+"  border:.5pt solid windowtext;"
+		+"	{text-align:left;\n"
+		+"	vertical-align:top;\n"
+		+"	border:.5pt solid windowtext;\n"
 		+"	white-space:normal;}\n"
 		+"-->\n"
 		+"</style>\n"
@@ -81,7 +83,7 @@ class HtmlTable {
 		for (ArrayList<String> row: table.getList()) {
 			result.append("<TR>");
 			for(String cell: row) {
-				result.append("<TD class=x166>" + convert(cell) + "</TD>" + "\n");
+				result.append("<TD class=xl66>" + convert(cell) + "</TD>" + "\n");
 			}
 			result.append("</TR>");
 		}
