@@ -12,9 +12,10 @@ import main.SimpleTable;
 
 public class BestandsdatenProcessor extends AbstractProcessor{
 	
+	private static boolean twentyfourInOne = false;
 	
-	private final static ArrayList<String> siegel = new ArrayList<String>(Arrays.asList(new String[]{
-			"1", "1a", "11", "83", "109", "578/M"})); //188 handled separately
+	private final static ArrayList<String> siegel = new ArrayList<String>(Arrays.asList(initSiegel()));
+	
 	
 	private final static ArrayList<String> RVKs = new ArrayList<String>(Arrays.asList(new String[]{
 		"AA","AB","AC","AD","AE","AF","AK","AL","AM","AN","AP","AR","AW","AX","AZ",
@@ -27,6 +28,18 @@ public class BestandsdatenProcessor extends AbstractProcessor{
 	
 	static ArrayList<String> removed = new ArrayList<String>();
 	static ArrayList<String> kept = new ArrayList<String>();
+	
+	
+	private static String[] initSiegel() {
+		if (twentyfourInOne)
+			return new String[]{ "188/25", "188/726", "188/802", "188/812", "188/814", 
+				"188/816", "188/822", "188/823", "188/827", "188/839", "188/867", "188/869", 
+				"188/870JA", "188/870KO", "188/870SI", "188/871", "188/877", "188/879", 
+				"188/885", "188/896", "188/898", "188/908", "188/912" };
+		return new String[]{"1", "1a", "11", "83", "109", "578/M"};
+	}
+	
+	
 	
 	
 	@Override
@@ -81,7 +94,7 @@ public class BestandsdatenProcessor extends AbstractProcessor{
 			
 
 			s = removeBrackets(s);
-			if (currSiegel.contains("188")) {
+			if (!twentyfourInOne && currSiegel.contains("188")) {
 				result += SimpleTable.toBold(s.substring(begin, end+1)) + s.substring(end+1) + "\n";
 			}
 			else if (siegel.contains(currSiegel) && s.contains("-")) {
