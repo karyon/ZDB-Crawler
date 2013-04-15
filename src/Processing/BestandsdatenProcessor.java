@@ -13,10 +13,9 @@ import main.SimpleTable;
 public class BestandsdatenProcessor extends AbstractProcessor{
 	
 	
-//	private final static String[] siegel = {"109", "1", "1a", "11", "578/M"};//188 gesondert behandelt
-	
 	private final static ArrayList<String> siegel = new ArrayList<String>(Arrays.asList(new String[]{
-			"109", "1", "1a", "11", "578/M"}));
+			"1", "1a", "11", "83", "109", "578/M"})); //188 handled separately
+	
 	private final static ArrayList<String> RVKs = new ArrayList<String>(Arrays.asList(new String[]{
 		"AA","AB","AC","AD","AE","AF","AK","AL","AM","AN","AP","AR","AW","AX","AZ",
 		"BA","CA","CL","DA",
