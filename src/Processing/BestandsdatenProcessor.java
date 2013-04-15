@@ -39,10 +39,21 @@ public class BestandsdatenProcessor extends AbstractProcessor{
 		
 		
 		String code = Main.getSourceCode("http://dispatch.opac.d-nb.de/PRS=HOL/CMD?ACT=SRCHM&IKT0=8506&TRM0="+zdbid+"&HLIB=255&PRSHOLDINGOPTION=BER&PRSHOLDINGOPTION=BAY");
-
+		
+		
+		Pattern pattern = Pattern.compile(".*<TABLE>.*?Bibliothek: B.*?</TABLE>");
+		Matcher matcher = pattern.matcher(code);
+		while(matcher.find()) {
+			
+			
+		}
+		
+		code = code.substring(code.indexOf("Bibliothek: "));
+		code = code.substring(0, code.indexOf("</TABLE>")); //make sure we dont include crap after the table
 		code = Main.cleanCode(code);
+		code = code.substring(16); //remove the first "Bibliothek: BER" so split works as intended
+		
 		code = code.replaceAll(":[[\n][\\s]+]", ": ");// : \n whitespace -> :_
-		code = code.substring(code.indexOf("Bibliothek: B")+16);//+16 um das erste "Bibliothek: BER" rauszunehmen, damit split funzt
 		code = code.replaceAll("\nFernleihe:[^\n]+", "");
 
 		String RVK = getRVK(code);
@@ -62,6 +73,7 @@ public class BestandsdatenProcessor extends AbstractProcessor{
 	
 	
 	private static String getSiegel(String[] ar) {
+		
 		String result = "";
 		for (String s: ar) {
 			int begin = s.indexOf('<');
