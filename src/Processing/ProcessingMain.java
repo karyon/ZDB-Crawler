@@ -153,10 +153,10 @@ public class ProcessingMain {
 		String[] ISSNs = null;
 		
 		if (input.length == 1) { //one column
-			int result = isPureISSNOrZDBID(input[0]);
+			int result = isPureIssnOrZdbidAndClean(input[0]);
 			
 			if (!errorMessages.equals("")) {
-				throw new ParseException("Die Eingabe war fehlerhaft:" + errorMessages + "\nBitte korrigieren Sie die angegebenen Stellen in Ihrer Tabelle.", -1);
+				throw new ParseException("Die Eingabe war fehlerhaft: " + errorMessages + "\nBitte korrigieren Sie die angegebenen Stellen in Ihrer Tabelle.", -1);
 			}
 			
 			if (result == 2) {//pure ISSN
@@ -176,9 +176,9 @@ public class ProcessingMain {
 			String[] lastColumn = input[input.length-1];
 			
 			
-			int result1 = isPureISSNOrZDBID(firstColumn);
+			int result1 = isPureIssnOrZdbidAndClean(firstColumn);
 			errorMessages = errorMessages.replace("Der erste Wert (", "Der erste Wert der ersten Spalte (");
-			int result2 = isPureISSNOrZDBID(lastColumn);
+			int result2 = isPureIssnOrZdbidAndClean(lastColumn);
 			errorMessages = errorMessages.replace("Der erste Wert (", "Der erste Wert der letzten Spalte (");
 			
 			if (!errorMessages.equals("")) {
@@ -199,38 +199,61 @@ public class ProcessingMain {
 	
 	/**
 	 * Checks whether the specified array contains solely ZDBIDs or ISSNs.
+	 * In case of ISSNs, this method replaces any non-ISSN with "".
 	 * @param temp
 	 * @return	1, if the array contains exclusively ZDBIDs (empty Strings are allowed, too)
 	 * 			2, if the array contains exclusively ISSNs (empty Strings are allowed, too)
 	 * 			-1 otherwise
 	 */
-	private static int isPureISSNOrZDBID(String[] temp) {
-		int i = 0;
-		//gehe zum ersten nichtleeren String
-		while (i < temp.length && temp[i].equals(""))
-			i++;
-		if (i == temp.length) {
-			errorMessages += "Fehler: Leere Spalte"; 
+	private static int isPureIssnOrZdbidAndClean(String[] temp) {
+		double[] counts = getZdbidIssnJunkWhitespacePercentages(temp);
+		System.out.println("counts in input (ZDBIDs, ISSNs, junk, whitespace: " + 
+				Arrays.toString(counts));
+		if (counts[3] > 0.95) { 
+			errorMessages += "Leere Spalte"; 
 			return -1;
 		}
-		boolean isISSN = isISSN(temp[i]);
-		boolean isZDBID = isZDBID(temp[i]);
-		if (!isISSN && !isZDBID) {
-			errorMessages += "\nDer erste Wert (\"" + temp[i] + "\", Zeile " + (i+1) + ") wurde weder als ZDB-ID noch als ISSN erkannt.";
-		}
-		i++;
-		for (;i < temp.length; i++){
-			String line = temp[i];
-			if (line.equals(""))
-					continue;
-			if (isISSN && !isISSN(line)) {
-				errorMessages += "\nZeile " + (i+1) + ": \"" + line + "\" wurde nicht als ISSN erkannt.";
+		else if (counts[0] > 0.9) { //ZDBIDs
+			for (int i = 0; i < temp.length; i++) {
+				if (!temp[i].equals("") && !isZDBID(temp[i])) {
+					//do not tolerate any non-ZDBID
+					errorMessages += "\nZeile " + (i+1) + ": \"" + temp[i] + "\" wurde nicht als ZDB-ID erkannt.";
+				}
 			}
-			if (isZDBID && !isZDBID(line)) {
-				errorMessages += "\nZeile " + (i+1) + ": \"" + line + "\" wurde nicht als ZDB-ID erkannt.";
-			}
+			return 1; //detected ZDBIDs
 		}
-		return (isZDBID) ? 1 : 2;
+		else if (counts[1] > 0.75) { //ISSNs, tolerate 25% other values
+			for (int i = 0; i < temp.length; i++) {
+				if (!temp[i].equals("") && !isISSN(temp[i])) {
+					temp[i] = "";
+				}
+			}
+			return 2; //detected ISSNs
+		}
+		
+		else {
+			errorMessages += "Eine Spalte konnte nicht als ZDBID- oder ISSN-Spalte erkannt werden.\n";
+			return -1;
+		}
+	}
+	
+	private static double[] getZdbidIssnJunkWhitespacePercentages(String[] temp) {
+		double[] result = {0, 0, 0, 0};
+		for (String s: temp) {
+			if(isZDBID(s))
+				result[0]++;
+			else if(isISSN(s))
+				result[1]++;
+			else if(s.equals(""))
+				result[3]++;
+			else
+				result[2]++;
+		}
+		double nonWhitespaceCount = result[0] + result[1] + result[2];
+		for (int i = 0; i < result.length-1; i++)
+			result[i] /= nonWhitespaceCount;
+		result[3] /= temp.length;
+		return result;
 	}
 	
 	
