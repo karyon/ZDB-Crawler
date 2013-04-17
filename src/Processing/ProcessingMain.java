@@ -19,8 +19,6 @@ public class ProcessingMain {
 	
 	
 	public static SimpleTable processIDList(String inputString) throws ParseException {
-		System.out.println("Eingabe:\n" + inputString);
-		
 		String[] lines = handleNewLinesInCells(inputString);
 		String[][] allColumns = formatInput(lines);
 		String[][] columns = checkAndSortInput(allColumns);
@@ -152,88 +150,56 @@ public class ProcessingMain {
 		String[] ZDBIDs = null;
 		String[] ISSNs = null;
 		
-		if (input.length == 1) { //one column
-			int result = isPureIssnOrZdbidAndClean(input[0]);
+		for (int i = 0; i < input.length; i++) {
+			double[] counts = getZdbidIssnJunkWhitespacePercentages(input[i]);
+			if (counts[0] > 0.75)
+				ZDBIDs = input[i];
+			else if (counts[1] > 0.75)
+				ISSNs = input[i];
+		}
+		
+
+		if (ZDBIDs == null && ISSNs == null) {
+			throw new ParseException("Es wurde weder eine ZDBID- noch eine ISSN-Spalte gefunden.\n" +
+					"Bitte überprüfen Sie Ihre Eingabe.", -1);
+		}
 			
-			if (!errorMessages.equals("")) {
-				throw new ParseException("Die Eingabe war fehlerhaft: " + errorMessages + "\nBitte korrigieren Sie die angegebenen Stellen in Ihrer Tabelle.", -1);
-			}
-			
-			if (result == 2) {//pure ISSN
-				ISSNs = input[0];
-				SFXLINKS = true;
-			}
-			else if (result == 1) { //pure ZDBID
-				ZDBIDs = input[0];
-				TITELDATEN = true;
-				BESTANDSDATEN = true;
-			}
-		} else { //multiple columns
-			SFXLINKS = true;
+		if (ZDBIDs != null) {
 			TITELDATEN = true;
 			BESTANDSDATEN = true;
-			String[] firstColumn = input[0];
-			String[] lastColumn = input[input.length-1];
-			
-			
-			int result1 = isPureIssnOrZdbidAndClean(firstColumn);
-			errorMessages = errorMessages.replace("Der erste Wert (", "Der erste Wert der ersten Spalte (");
-			int result2 = isPureIssnOrZdbidAndClean(lastColumn);
-			errorMessages = errorMessages.replace("Der erste Wert (", "Der erste Wert der letzten Spalte (");
-			
-			if (!errorMessages.equals("")) {
-				throw new ParseException("Die Eingabe war fehlerhaft:" + errorMessages + "\nBitte korrigieren Sie die angegebenen Stellen in Ihrer Tabelle.", -1);
-			}
-			
-			if (result1 == result2) {
-				throw new ParseException("Die erste und letzte Spalte der Eingabe scheinen die gleiche Nummernart zu enthalten, war das beabsichtigt?", -1);
-			}
-			
-			ZDBIDs = (result1 == 1) ? firstColumn : lastColumn;
-			ISSNs = (result1 == 2) ? firstColumn : lastColumn;
+			isPureZDBID(ZDBIDs);
+			System.out.println("Input ZDBIDs: \n" + Arrays.toString(ZDBIDs));
 		}
+		
+		if (ISSNs != null) {
+			SFXLINKS = true;
+			cleanISSNs(ISSNs);
+			System.out.println("Input ISSNs: \n" + Arrays.toString(ISSNs));
+		}
+		
+		if (!errorMessages.equals("")) {
+			throw new ParseException("Die Eingabe war fehlerhaft: " + errorMessages + "\nBitte korrigieren Sie die angegebenen Stellen in Ihrer Tabelle.", -1);
+		}
+		
 		return new String[][]{ZDBIDs, ISSNs};
 	}
 	
 	
+	private static void isPureZDBID(String[] ZDBIDs) {
+		for (int i = 0; i < ZDBIDs.length; i++) {
+			if (!ZDBIDs[i].equals("") && !isZDBID(ZDBIDs[i])) {
+				//do not tolerate any non-ZDBID
+				errorMessages += "\nZeile " + (i+1) + ": \"" + ZDBIDs[i] + "\" wurde nicht als ZDB-ID erkannt.";
+			}
+		}
+	}
 	
-	/**
-	 * Checks whether the specified array contains solely ZDBIDs or ISSNs.
-	 * In case of ISSNs, this method replaces any non-ISSN with "".
-	 * @param temp
-	 * @return	1, if the array contains exclusively ZDBIDs (empty Strings are allowed, too)
-	 * 			2, if the array contains exclusively ISSNs (empty Strings are allowed, too)
-	 * 			-1 otherwise
-	 */
-	private static int isPureIssnOrZdbidAndClean(String[] temp) {
-		double[] counts = getZdbidIssnJunkWhitespacePercentages(temp);
-		System.out.println("counts in input (ZDBIDs, ISSNs, junk, whitespace: " + 
-				Arrays.toString(counts));
-		if (counts[3] > 0.95) { 
-			errorMessages += "Leere Spalte"; 
-			return -1;
-		}
-		else if (counts[0] > 0.9) { //ZDBIDs
-			for (int i = 0; i < temp.length; i++) {
-				if (!temp[i].equals("") && !isZDBID(temp[i])) {
-					//do not tolerate any non-ZDBID
-					errorMessages += "\nZeile " + (i+1) + ": \"" + temp[i] + "\" wurde nicht als ZDB-ID erkannt.";
-				}
+	
+	private static void cleanISSNs(String[] ISSNs) {
+		for (int i = 0; i < ISSNs.length; i++) {
+			if (!ISSNs[i].equals("") && !isISSN(ISSNs[i])) {
+				ISSNs[i] = "";
 			}
-			return 1; //detected ZDBIDs
-		}
-		else if (counts[1] > 0.75) { //ISSNs, tolerate 25% other values
-			for (int i = 0; i < temp.length; i++) {
-				if (!temp[i].equals("") && !isISSN(temp[i])) {
-					temp[i] = "";
-				}
-			}
-			return 2; //detected ISSNs
-		}
-		
-		else {
-			errorMessages += "Eine Spalte konnte nicht als ZDBID- oder ISSN-Spalte erkannt werden.\n";
-			return -1;
 		}
 	}
 	
