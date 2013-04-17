@@ -47,6 +47,8 @@ public class Main {
 	private static int stepsDone = 0;
 	private static int totalSteps = 0;
 	
+	public static boolean twentyfourInOne = true;
+	
 	
 	public static void main(String[] args) {
 //		 try {
@@ -74,10 +76,13 @@ public class Main {
 	 * 
 	 */
 	private static void buildAndShowGui() {
-		frame = new JFrame("ZDB-Programm");
+		String windowTitle = "ZDB-Programm";
+		if (twentyfourInOne)
+			windowTitle += " 24in1-Version";
+		frame = new JFrame(windowTitle);
 		frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
 		frame.setResizable(false);
-		final JTextArea textArea = new JTextArea("", 1, 20);
+		final JTextArea textArea = new JTextArea("", 1,28);
 		textArea.setBorder(BorderFactory.createBevelBorder(BevelBorder.LOWERED));
 		
 //		textArea.setBorder(BorderFactory.createEmptyBorder(4, 4, 4, 4));
