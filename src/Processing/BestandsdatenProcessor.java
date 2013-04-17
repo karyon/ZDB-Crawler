@@ -116,7 +116,12 @@ public class BestandsdatenProcessor extends AbstractProcessor{
 				continue;
 
 			String currRVK = matcher.group();
-			String test = code.substring(matcher.start(), code.indexOf("\n", matcher.end()));
+			int start = matcher.start();
+			int end = matcher.end();
+			int nextNewLine = code.indexOf("\n", end);
+			if(nextNewLine == -1) //if this is the last entry
+				nextNewLine = code.length();
+			String test = code.substring(start, nextNewLine);
 			if (test.matches("\\S\\S [\\d]+ \\p{javaUpperCase}[^\n]+"))
 				currRVK = test;
 			
