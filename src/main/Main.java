@@ -112,15 +112,15 @@ public class Main {
 						catch (ParseException e) {
 							showErrorAndRestart(e.getMessage());
 						}
-//						catch(Exception e) {
-//							System.err.println("Should not have happened: " + e.getClass().getName() + ": " + e.getMessage());
-//							System.out.println("\n\n");
-//							e.printStackTrace();
-//							//TODO errorhandling...?
-//							showErrorAndRestart("Ein unvorhergeseher Fehler trat auf.\n" +
-//									"Dagegen können Sie leider nichts machen.");
-//							System.exit(-1);
-//						}
+						catch(Exception e) {
+							System.err.println("Should not have happened: " + e.getClass().getName() + ": " + e.getMessage());
+							System.out.println("\n\n");
+							e.printStackTrace();
+							//TODO errorhandling...?
+							showErrorAndRestart("Ein unvorhergeseher Fehler trat auf.\n" +
+									"Dagegen können Sie leider nichts machen.");
+							System.exit(-1);
+						}
 						//Abgeschlossen
 						restart();
 					}
