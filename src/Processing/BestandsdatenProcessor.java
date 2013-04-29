@@ -95,7 +95,7 @@ public class BestandsdatenProcessor extends AbstractProcessor{
 			if (!Main.twentyfourInOne && currSiegel.contains("188")) {
 				result += SimpleTable.toBold(s.substring(begin, end+1)) + s.substring(end+1) + "\n";
 			}
-			else if (siegel.contains(currSiegel) && s.contains("-")) {
+			else if (Main.twentyfourInOne && siegel.contains(currSiegel)) {
 				result += s + "\n";
 			}
 		}
