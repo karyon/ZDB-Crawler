@@ -22,12 +22,38 @@ public class ProcessingMain {
 	
 	
 	public static SimpleTable processIDList(String inputString) throws ParseException {
-		String[][] allColumns = handleNewLinesInCells(inputString);
-		String[][] columns = checkAndSortInput(allColumns);
+		String[][] columns = parseInput(inputString);
 		
 		String[] ZDBIDs = columns[0];
 		String[] ISSNs = columns[1];
 		
+		initNumberOfSteps(columns[0].length);
+		
+		SimpleTable resultTable = process(ZDBIDs, ISSNs);
+		
+		return resultTable;
+	}
+
+
+	/** Parses the input and returns 
+	 * @param inputString
+	 * @return
+	 * @throws ParseException
+	 */
+	private static String[][] parseInput(String inputString) throws ParseException {
+		String[][] lines = parseCells(inputString);
+		cleanCells(lines);
+		String[][] allColumns = flip2DArray(lines);
+		String[][] columns = checkAndSortInput(allColumns);
+		return columns;
+	}
+
+
+	/**
+	 * Tell Main how many steps will be done, used for progressbar
+	 * @param numberOfLines
+	 */
+	private static void initNumberOfSteps(int numberOfLines) {
 		int numberOfSteps = 0;
 		if (SFXLINKS)
 			numberOfSteps += 1;
@@ -35,46 +61,7 @@ public class ProcessingMain {
 				numberOfSteps += 1;
 		if (BESTANDSDATEN)
 			numberOfSteps += 1;
-		Main.setTotalSteps(numberOfSteps * ((ZDBIDs == null) ? ISSNs.length : ZDBIDs.length));
-		
-		ArrayList<SimpleTable> resultTables = new ArrayList<SimpleTable>();
-		if (SFXLINKS) {
-			ISSNProcessor issnProcessor = new ISSNProcessor();
-			resultTables.add(issnProcessor.process(ISSNs));
-		}
-		if (TITELDATEN) {
-			TiteldatenProcessor titeldatenProcessor = new TiteldatenProcessor();
-			resultTables.add(titeldatenProcessor.process(ZDBIDs));
-		}
-		if (BESTANDSDATEN) {
-			BestandsdatenProcessor bestandsdatenProcessor = new BestandsdatenProcessor();
-			resultTables.add(bestandsdatenProcessor.process(ZDBIDs));
-		}
-		//concatenate all resultTables to the first resultTable
-		for(int i = 1; i < resultTables.size(); i++) {
-			resultTables.get(0).concat(resultTables.get(i));
-		}
-		
-		BestandsdatenProcessor.output();
-		return resultTables.get(0);
-	}
-	
-	
-	/**
-	 * 
-	 * In the input, \n could mean a new line in the table OR a new line in a cell.
-	 * Each String in the returned array represents one line of the table.
-	 * @param input
-	 * @return
-	 * @throws ParseException
-	 */
-	private static String[][] handleNewLinesInCells(String input) throws ParseException {
-		String[][] parsedInput = parseCells(input);
-		cleanCells(parsedInput);
-
-		String[][] everythingToArray = flip2DArray(parsedInput);
-
-		return everythingToArray;
+		Main.setTotalSteps(numberOfSteps * numberOfLines);
 	}
 	
 	
@@ -99,6 +86,36 @@ public class ProcessingMain {
 	    String[][] parsedCsvArray = parsedCsv.toArray(new String[][]{});
 		
 		return parsedCsvArray;
+	}
+
+
+	/**
+	 * Central method, starts processing of everything.
+	 * @param ZDBIDs
+	 * @param ISSNs
+	 * @return
+	 */
+	private static SimpleTable process(String[] ZDBIDs, String[] ISSNs) {
+		ArrayList<SimpleTable> resultTables = new ArrayList<SimpleTable>();
+		if (SFXLINKS) {
+			ISSNProcessor issnProcessor = new ISSNProcessor();
+			resultTables.add(issnProcessor.process(ISSNs));
+		}
+		if (TITELDATEN) {
+			TiteldatenProcessor titeldatenProcessor = new TiteldatenProcessor();
+			resultTables.add(titeldatenProcessor.process(ZDBIDs));
+		}
+		if (BESTANDSDATEN) {
+			BestandsdatenProcessor bestandsdatenProcessor = new BestandsdatenProcessor();
+			resultTables.add(bestandsdatenProcessor.process(ZDBIDs));
+		}
+		
+		//concatenate all resultTables to the first resultTable
+		for(int i = 1; i < resultTables.size(); i++)
+			resultTables.get(0).concat(resultTables.get(i));
+		
+		BestandsdatenProcessor.output();
+		return resultTables.get(0);
 	}
 	
 	
