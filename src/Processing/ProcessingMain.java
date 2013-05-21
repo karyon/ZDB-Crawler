@@ -19,8 +19,7 @@ public class ProcessingMain {
 	
 	
 	public static SimpleTable processIDList(String inputString) throws ParseException {
-		String[] lines = handleNewLinesInCells(inputString);
-		String[][] allColumns = formatInput(lines);
+		String[][] allColumns = handleNewLinesInCells(inputString);
 		String[][] columns = checkAndSortInput(allColumns);
 		
 		String[] ZDBIDs = columns[0];
@@ -59,84 +58,138 @@ public class ProcessingMain {
 	
 	
 	/**
+	 * 
 	 * In the input, \n could mean a new line in the table OR a new line in a cell.
 	 * Each String in the returned array represents one line of the table.
 	 * @param input
 	 * @return
 	 * @throws ParseException
 	 */
-	private static String[] handleNewLinesInCells(String input) throws ParseException {
+	private static String[][] handleNewLinesInCells(String input) throws ParseException {
+		//TODO move this somewhere else
+		input = input.replace("*", "");
+		
+		input = helpSplitting(input);
+		
+		ArrayList<ArrayList<String>> lines = parseCells(input);
+		checkCellNumberPerLine(lines);
+		
+		cleanCells(lines);
 
-		String[] lines = input.replace("*", "").split("\n");
+		String[][] everythingToArray = formatInputList(lines);
+
+		return everythingToArray;
+	}
+
+
+	/**
+	 * Removes doublequotes (these are quotes in a cell) 
+	 * and inserts "" for empty cells.
+	 * @param input
+	 * @return
+	 */
+	private static String helpSplitting(String input) {
+		//remove all in-cell-quotes
+		input = input.replace("\"\"", "");
+		//replace empty cells by '""'
+		input = input.replace("\t\t", "\t\"\"\t");
+		input = input.replace("\t\n", "\t\"\"\n");
+		input = input.replace("\n\t", "\n\"\"\t");
+		return input;
+	}
+	
+	
+	/**
+	 * Parses the input string into a twodimensional list representing lines 
+	 * and cells of the input.
+	 * @param input
+	 * @return
+	 * @throws ParseException
+	 */
+	private static ArrayList<ArrayList<String>> parseCells(String input) throws ParseException {
+		ArrayList<String> currentLine = new ArrayList<String>();
+		ArrayList<ArrayList<String>> lines = new ArrayList<ArrayList<String>>();
+		lines.add(currentLine);
 		
-		int maxTabs = 0;
-		for (String line: lines) {
-			maxTabs = Math.max(maxTabs, countTabs(line));
-		}
-		
-		int newLineIndex = 0;
-		for (int oldLineIndex = 0; oldLineIndex < lines.length; newLineIndex++, oldLineIndex++) {
-			lines[newLineIndex] = lines[oldLineIndex];
+		String[] cellarray = input.split("\t");
+		for (int i = 0; i < cellarray.length; i++) {
+			String cell = cellarray[i];
 			
-			//everything from here does not get executed when line length is ok
-			while(countTabs(lines[newLineIndex]) < maxTabs) {
-				try{
-					String nextLine = lines[++oldLineIndex];
-					lines[newLineIndex] += "\n" + nextLine;
-				}
-				catch (ArrayIndexOutOfBoundsException e) {
-					break;
-				}
+			String[] split;
+			if (cell.startsWith("\"")) {
+				int indexOfSecondQuote = cell.indexOf("\"", 1);
+				String firstCell = cell.substring(0, indexOfSecondQuote+1);
+				String rest = cell.substring(indexOfSecondQuote+1);
+				if (rest.startsWith("\n"))
+					split = new String[]{firstCell, rest.substring(1)};
+				else
+					split = new String[]{firstCell};
 			}
-			//line is too long, error out
-			if (countTabs(lines[newLineIndex]) != maxTabs) {
-				int longestLineIndex = 0;
-				while(countTabs(lines[longestLineIndex]) < maxTabs)
-					longestLineIndex++;
-				throw new ParseException("Fehler bei der Behandlung von Zeilenumbrüchen. \n" + 
-						"In der Eingabe wurden (z.B. in Zeile " + (longestLineIndex+1) + ") " + (maxTabs+1) + " Spalten erkannt, "+
-						" in Zeile " + (newLineIndex+1) + " scheint die Spaltenanzahl anders zu sein. \n" +
-						"1. Wurde die Eingabe wirklich aus Excel herauskopiert? \n" +
-						"2. Falls die erkannte Anzahl der Spaltennicht stimmt, überprüfen Sie  Zeile " + (longestLineIndex+1) + " auf Unregelmäßigkeiten.\n" +
-						"3. Als letztes können Sie Zeile " + (newLineIndex+1) + " auf Unregelmäßigkeiten überprüfen.", newLineIndex+1);
+			else
+				split = cell.split("\n");
+			
+			currentLine.add(split[0]);
+			//encountered a newline which actually means a new line in the table, so start a new line.
+			if (split.length == 2 && i != cellarray.length-1) {
+				currentLine = new ArrayList<String>();
+				lines.add(currentLine);
+				currentLine.add(split[1]);
 			}
+			else if (split.length > 2) //sanity check
+				throw new ParseException("Fehler bei der Behandlung von Zeilenumbrüchen."
+						+ "Bitte überprüfen Sie die Zeilen " + lines.size() + " und " + (lines.size()+1) + "auf Unregelmäßigkeiten.", -1);
 		}
-		lines = Arrays.copyOf(lines, newLineIndex);
 		return lines;
 	}
 	
 	
+	/**
+	 * removes quotes and whitespace from the beginning and end of each cell.
+	 * @param lines
+	 */
+	private static void cleanCells(ArrayList<ArrayList<String>> lines) {
+		for (ArrayList<String> line: lines) 
+			for (int i = 0; i < line.size(); i++) 
+				line.set(i, line.get(i).replace("\"", "").trim());
+	}
+	
 	
 	/**
-	 * Returns the input differently formatted. First index of returned array is
+	 * Checks whether each list in the specified list has the same size.
+	 * @param lines
+	 * @throws ParseException
+	 */
+	private static void checkCellNumberPerLine(
+			ArrayList<ArrayList<String>> lines) throws ParseException {
+		int columnCount = lines.get(0).size();
+		for (int i = 0; i < lines.size(); i++) {
+			ArrayList<String> line = lines.get(i);
+			if (line.size() != columnCount) {
+				throw new ParseException("Fehler bei der Behandlung von Zeilenumbrüchen. \n" + 
+						"In der ersten Zeile der Eingabe wurden" + (columnCount) + " Spalten, \n"+
+						" in Zeile " + (i+1) + " aber " + line.size() + "Spalten erkannt.\n" +
+						"1. Wurde die Eingabe wirklich aus Excel herauskopiert? \n" +
+						"2. Überprüfen Sie die Zeile, deren genannte Spaltenanzahl nicht stimmt, auf Unregelmäßigkeiten.", -1);
+			}
+		}
+	}
+	
+	
+	/**
+	 * Returns the input list as a flipped array. First index of returned array is
 	 * the column index, second is the line index.
 	 * @param input
 	 * @return
 	 */
-	private static String[][] formatInput(String[] lines) {
-		int columncount = 1 + countTabs(lines[0]);
-		String[][] columns = new String[columncount][lines.length];
+	private static String[][] formatInputList(ArrayList<ArrayList<String>> lines) {
+		int numColumns = lines.get(0).size();
+		String[][] columns = new String[numColumns][lines.size()];
+		for (int i = 0; i < lines.size(); i++)
+			for (int j = 0; j < numColumns; j++)
+				columns[j][i] = lines.get(i).get(j);
 		
-		for (int i = 0; i < lines.length; i++) {
-			String[] linesplit = lines[i].split("\t");
-			for (int j = 0; j < columncount; j++) {
-				if (j < linesplit.length)
-					columns[j][i] = linesplit[j].trim();
-				else
-					columns[j][i] = "";
-			}
-		}
 		return columns;
 	}
-	
-	
-	/** 
-	 * Returns the number of occurrences of the '\t' character in the specified String
-	 */
-	private static int countTabs(String text) {
-		return (text.length() - text.replace("\t", "").length());
-	}
-	
 	
 	
 	/**
