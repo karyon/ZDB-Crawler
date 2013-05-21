@@ -1,12 +1,15 @@
 package Processing;
+import java.io.IOException;
+import java.io.StringReader;
 import java.text.ParseException;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.List;
+
+import au.com.bytecode.opencsv.CSVReader;
 
 import main.Main;
 import main.SimpleTable;
-
-
 
 
 
@@ -66,36 +69,12 @@ public class ProcessingMain {
 	 * @throws ParseException
 	 */
 	private static String[][] handleNewLinesInCells(String input) throws ParseException {
-		//TODO move this somewhere else
-		input = input.replace("*", "");
-		
-		input = helpSplitting(input);
-		
-		ArrayList<ArrayList<String>> lines = parseCells(input);
-		checkCellNumberPerLine(lines);
-		
-		cleanCells(lines);
+		String[][] parsedInput = parseCells(input);
+		cleanCells(parsedInput);
 
-		String[][] everythingToArray = formatInputList(lines);
+		String[][] everythingToArray = flip2DArray(parsedInput);
 
 		return everythingToArray;
-	}
-
-
-	/**
-	 * Removes doublequotes (these are quotes in a cell) 
-	 * and inserts "" for empty cells.
-	 * @param input
-	 * @return
-	 */
-	private static String helpSplitting(String input) {
-		//remove all in-cell-quotes
-		input = input.replace("\"\"", "");
-		//replace empty cells by '""'
-		input = input.replace("\t\t", "\t\"\"\t");
-		input = input.replace("\t\n", "\t\"\"\n");
-		input = input.replace("\n\t", "\n\"\"\t");
-		return input;
 	}
 	
 	
@@ -106,87 +85,46 @@ public class ProcessingMain {
 	 * @return
 	 * @throws ParseException
 	 */
-	private static ArrayList<ArrayList<String>> parseCells(String input) throws ParseException {
-		ArrayList<String> currentLine = new ArrayList<String>();
-		ArrayList<ArrayList<String>> lines = new ArrayList<ArrayList<String>>();
-		lines.add(currentLine);
+	private static String[][] parseCells(String input) throws ParseException {
+		@SuppressWarnings("resource") //no need to close a string reader
+		CSVReader reader = new CSVReader(new StringReader(input), '\t');
+
+	    List<String[]> parsedCsv = null;
+		try {
+			parsedCsv = reader.readAll();
+		} catch (IOException e) {
+			throw new ParseException(e.getMessage(), -1);
+		}
+	    
+	    String[][] parsedCsvArray = parsedCsv.toArray(new String[][]{});
 		
-		String[] cellarray = input.split("\t");
-		for (int i = 0; i < cellarray.length; i++) {
-			String cell = cellarray[i];
-			
-			String[] split;
-			if (cell.startsWith("\"")) {
-				int indexOfSecondQuote = cell.indexOf("\"", 1);
-				String firstCell = cell.substring(0, indexOfSecondQuote+1);
-				String rest = cell.substring(indexOfSecondQuote+1);
-				if (rest.startsWith("\n"))
-					split = new String[]{firstCell, rest.substring(1)};
-				else
-					split = new String[]{firstCell};
-			}
-			else
-				split = cell.split("\n");
-			
-			currentLine.add(split[0]);
-			//encountered a newline which actually means a new line in the table, so start a new line.
-			if (split.length == 2 && i != cellarray.length-1) {
-				currentLine = new ArrayList<String>();
-				lines.add(currentLine);
-				currentLine.add(split[1]);
-			}
-			else if (split.length > 2) //sanity check
-				throw new ParseException("Fehler bei der Behandlung von Zeilenumbrüchen."
-						+ "Bitte überprüfen Sie die Zeilen " + lines.size() + " und " + (lines.size()+1) + "auf Unregelmäßigkeiten.", -1);
-		}
-		return lines;
+		return parsedCsvArray;
 	}
 	
 	
 	/**
-	 * removes quotes and whitespace from the beginning and end of each cell.
+	 * removes asterisks and whitespace from the beginning and end of each cell.
 	 * @param lines
 	 */
-	private static void cleanCells(ArrayList<ArrayList<String>> lines) {
-		for (ArrayList<String> line: lines) 
-			for (int i = 0; i < line.size(); i++) 
-				line.set(i, line.get(i).replace("\"", "").trim());
+	private static void cleanCells(String[][] lines) {
+		for (String[] line: lines) 
+			for (int i = 0; i < line.length; i++) 
+				line[i] = line[i].replace("*", "").trim();
 	}
 	
 	
 	/**
-	 * Checks whether each list in the specified list has the same size.
-	 * @param lines
-	 * @throws ParseException
-	 */
-	private static void checkCellNumberPerLine(
-			ArrayList<ArrayList<String>> lines) throws ParseException {
-		int columnCount = lines.get(0).size();
-		for (int i = 0; i < lines.size(); i++) {
-			ArrayList<String> line = lines.get(i);
-			if (line.size() != columnCount) {
-				throw new ParseException("Fehler bei der Behandlung von Zeilenumbrüchen. \n" + 
-						"In der ersten Zeile der Eingabe wurden" + (columnCount) + " Spalten, \n"+
-						" in Zeile " + (i+1) + " aber " + line.size() + "Spalten erkannt.\n" +
-						"1. Wurde die Eingabe wirklich aus Excel herauskopiert? \n" +
-						"2. Überprüfen Sie die Zeile, deren genannte Spaltenanzahl nicht stimmt, auf Unregelmäßigkeiten.", -1);
-			}
-		}
-	}
-	
-	
-	/**
-	 * Returns the input list as a flipped array. First index of returned array is
-	 * the column index, second is the line index.
+	 * Flips the input array, i.e. mirrors it at its 
+	 * upperleft-lowerright-diagonal.
 	 * @param input
 	 * @return
 	 */
-	private static String[][] formatInputList(ArrayList<ArrayList<String>> lines) {
-		int numColumns = lines.get(0).size();
-		String[][] columns = new String[numColumns][lines.size()];
-		for (int i = 0; i < lines.size(); i++)
+	private static String[][] flip2DArray(String[][] lines) {
+		int numColumns = lines[0].length;
+		String[][] columns = new String[numColumns][lines.length];
+		for (int i = 0; i < lines.length; i++)
 			for (int j = 0; j < numColumns; j++)
-				columns[j][i] = lines.get(i).get(j);
+				columns[j][i] = lines[i][j];
 		
 		return columns;
 	}
