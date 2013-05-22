@@ -73,9 +73,11 @@ public class ProcessingMain {
 	 * @throws ParseException
 	 */
 	private static String[][] parseCells(String input) throws ParseException {
+		input = handleNonquotedQuotes(input);
+		
 		@SuppressWarnings("resource") //no need to close a string reader
 		CSVReader reader = new CSVReader(new StringReader(input), '\t');
-
+		
 	    List<String[]> parsedCsv = null;
 		try {
 			parsedCsv = reader.readAll();
@@ -86,6 +88,28 @@ public class ProcessingMain {
 	    String[][] parsedCsvArray = parsedCsv.toArray(new String[][]{});
 		
 		return parsedCsvArray;
+	}
+
+
+	/**
+	 * Excel does not doublequote or escape quotes when they are not in a multiline cell.
+	 * This replaces such quotes with two quotes.
+	 * @param input
+	 * @return
+	 */
+	private static String handleNonquotedQuotes(String input) {
+		String[] inputSplit = input.split("\t");
+		for (int i = 0; i < inputSplit.length; i++) {
+			if (!inputSplit[i].matches("\"[\\S\\s]*\"")) 
+				inputSplit[i] = inputSplit[i].replace("\"", "\"\"");
+		}
+		StringBuilder builder = new StringBuilder();
+		for (String s: inputSplit) {
+			builder.append(s);
+			if (!s.equals(inputSplit[inputSplit.length-1]))
+				builder.append("\t");
+		}
+		return builder.toString();
 	}
 
 
