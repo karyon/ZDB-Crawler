@@ -63,6 +63,36 @@ public class ProcessingMain {
 			numberOfSteps += 1;
 		Main.setTotalSteps(numberOfSteps * numberOfLines);
 	}
+
+
+	/**
+	 * Central method, starts processing of everything.
+	 * @param ZDBIDs
+	 * @param ISSNs
+	 * @return
+	 */
+	private static SimpleTable process(String[] ZDBIDs, String[] ISSNs) {
+		ArrayList<SimpleTable> resultTables = new ArrayList<SimpleTable>();
+		if (SFXLINKS) {
+			ISSNProcessor issnProcessor = new ISSNProcessor();
+			resultTables.add(issnProcessor.process(ISSNs));
+		}
+		if (TITELDATEN) {
+			TiteldatenProcessor titeldatenProcessor = new TiteldatenProcessor();
+			resultTables.add(titeldatenProcessor.process(ZDBIDs));
+		}
+		if (BESTANDSDATEN) {
+			BestandsdatenProcessor bestandsdatenProcessor = new BestandsdatenProcessor();
+			resultTables.add(bestandsdatenProcessor.process(ZDBIDs));
+		}
+		
+		//concatenate all resultTables to the first resultTable
+		for(int i = 1; i < resultTables.size(); i++)
+			resultTables.get(0).concat(resultTables.get(i));
+		
+		BestandsdatenProcessor.output();
+		return resultTables.get(0);
+	}
 	
 	
 	/**
@@ -110,36 +140,6 @@ public class ProcessingMain {
 				builder.append("\t");
 		}
 		return builder.toString();
-	}
-
-
-	/**
-	 * Central method, starts processing of everything.
-	 * @param ZDBIDs
-	 * @param ISSNs
-	 * @return
-	 */
-	private static SimpleTable process(String[] ZDBIDs, String[] ISSNs) {
-		ArrayList<SimpleTable> resultTables = new ArrayList<SimpleTable>();
-		if (SFXLINKS) {
-			ISSNProcessor issnProcessor = new ISSNProcessor();
-			resultTables.add(issnProcessor.process(ISSNs));
-		}
-		if (TITELDATEN) {
-			TiteldatenProcessor titeldatenProcessor = new TiteldatenProcessor();
-			resultTables.add(titeldatenProcessor.process(ZDBIDs));
-		}
-		if (BESTANDSDATEN) {
-			BestandsdatenProcessor bestandsdatenProcessor = new BestandsdatenProcessor();
-			resultTables.add(bestandsdatenProcessor.process(ZDBIDs));
-		}
-		
-		//concatenate all resultTables to the first resultTable
-		for(int i = 1; i < resultTables.size(); i++)
-			resultTables.get(0).concat(resultTables.get(i));
-		
-		BestandsdatenProcessor.output();
-		return resultTables.get(0);
 	}
 	
 	
