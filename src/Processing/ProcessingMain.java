@@ -103,8 +103,6 @@ public class ProcessingMain {
 	 * @throws ParseException
 	 */
 	private static String[][] parseCells(String input) throws ParseException {
-		input = handleNonquotedQuotes(input);
-		
 		@SuppressWarnings("resource") //no need to close a string reader
 		CSVReader reader = new CSVReader(new StringReader(input), '\t');
 		
@@ -118,28 +116,6 @@ public class ProcessingMain {
 	    String[][] parsedCsvArray = parsedCsv.toArray(new String[][]{});
 		
 		return parsedCsvArray;
-	}
-
-
-	/**
-	 * Excel does not doublequote or escape quotes when they are not in a multiline cell.
-	 * This replaces such quotes with two quotes.
-	 * @param input
-	 * @return
-	 */
-	private static String handleNonquotedQuotes(String input) {
-		String[] inputSplit = input.split("\t");
-		for (int i = 0; i < inputSplit.length; i++) {
-			if (!inputSplit[i].matches("\"[\\S\\s]*\"")) 
-				inputSplit[i] = inputSplit[i].replace("\"", "\"\"");
-		}
-		StringBuilder builder = new StringBuilder();
-		for (String s: inputSplit) {
-			builder.append(s);
-			if (!s.equals(inputSplit[inputSplit.length-1]))
-				builder.append("\t");
-		}
-		return builder.toString();
 	}
 	
 	
@@ -159,13 +135,19 @@ public class ProcessingMain {
 	 * upperleft-lowerright-diagonal.
 	 * @param input
 	 * @return
+	 * @throws ParseException 
 	 */
-	private static String[][] flip2DArray(String[][] lines) {
+	private static String[][] flip2DArray(String[][] lines) throws ParseException {
 		int numColumns = lines[0].length;
 		String[][] columns = new String[numColumns][lines.length];
-		for (int i = 0; i < lines.length; i++)
+		for (int i = 0; i < lines.length; i++) {
+			if (lines[i].length != lines[0].length)
+				throw new ParseException("Fehler beim Verarbeiten der Eingabe.\n" +
+						"Vermutlich befinden sich in Zeile " + (i+1) + " Anführungszeichen (\"),\n" +
+						"bitte entfernen Sie diese.", -1);
 			for (int j = 0; j < numColumns; j++)
 				columns[j][i] = lines[i][j];
+		}
 		
 		return columns;
 	}
