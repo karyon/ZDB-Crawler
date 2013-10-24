@@ -1,12 +1,15 @@
 package Processing;
+import java.io.IOException;
+import java.io.StringReader;
 import java.text.ParseException;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.List;
+
+import au.com.bytecode.opencsv.CSVReader;
 
 import main.Main;
 import main.SimpleTable;
-
-
 
 
 
@@ -19,13 +22,38 @@ public class ProcessingMain {
 	
 	
 	public static SimpleTable processIDList(String inputString) throws ParseException {
-		String[] lines = handleNewLinesInCells(inputString);
-		String[][] allColumns = formatInput(lines);
-		String[][] columns = checkAndSortInput(allColumns);
+		String[][] columns = parseInput(inputString);
 		
 		String[] ZDBIDs = columns[0];
 		String[] ISSNs = columns[1];
 		
+		initNumberOfSteps(columns[0].length);
+		
+		SimpleTable resultTable = process(ZDBIDs, ISSNs);
+		
+		return resultTable;
+	}
+
+
+	/** Parses the input and returns 
+	 * @param inputString
+	 * @return
+	 * @throws ParseException
+	 */
+	private static String[][] parseInput(String inputString) throws ParseException {
+		String[][] lines = parseCells(inputString);
+		cleanCells(lines);
+		String[][] allColumns = flip2DArray(lines);
+		String[][] columns = checkAndSortInput(allColumns);
+		return columns;
+	}
+
+
+	/**
+	 * Tell Main how many steps will be done, used for progressbar
+	 * @param numberOfLines
+	 */
+	private static void initNumberOfSteps(int numberOfLines) {
 		int numberOfSteps = 0;
 		if (SFXLINKS)
 			numberOfSteps += 1;
@@ -33,8 +61,17 @@ public class ProcessingMain {
 				numberOfSteps += 1;
 		if (BESTANDSDATEN)
 			numberOfSteps += 1;
-		Main.setTotalSteps(numberOfSteps * ((ZDBIDs == null) ? ISSNs.length : ZDBIDs.length));
-		
+		Main.setTotalSteps(numberOfSteps * numberOfLines);
+	}
+
+
+	/**
+	 * Central method, starts processing of everything.
+	 * @param ZDBIDs
+	 * @param ISSNs
+	 * @return
+	 */
+	private static SimpleTable process(String[] ZDBIDs, String[] ISSNs) {
 		ArrayList<SimpleTable> resultTables = new ArrayList<SimpleTable>();
 		if (SFXLINKS) {
 			ISSNProcessor issnProcessor = new ISSNProcessor();
@@ -48,10 +85,10 @@ public class ProcessingMain {
 			BestandsdatenProcessor bestandsdatenProcessor = new BestandsdatenProcessor();
 			resultTables.add(bestandsdatenProcessor.process(ZDBIDs));
 		}
+		
 		//concatenate all resultTables to the first resultTable
-		for(int i = 1; i < resultTables.size(); i++) {
+		for(int i = 1; i < resultTables.size(); i++)
 			resultTables.get(0).concat(resultTables.get(i));
-		}
 		
 		BestandsdatenProcessor.output();
 		return resultTables.get(0);
@@ -59,84 +96,61 @@ public class ProcessingMain {
 	
 	
 	/**
-	 * In the input, \n could mean a new line in the table OR a new line in a cell.
-	 * Each String in the returned array represents one line of the table.
+	 * Parses the input string into a twodimensional list representing lines 
+	 * and cells of the input.
 	 * @param input
 	 * @return
 	 * @throws ParseException
 	 */
-	private static String[] handleNewLinesInCells(String input) throws ParseException {
-
-		String[] lines = input.replace("*", "").split("\n");
+	private static String[][] parseCells(String input) throws ParseException {
+		@SuppressWarnings("resource") //no need to close a string reader
+		CSVReader reader = new CSVReader(new StringReader(input), '\t');
 		
-		int maxTabs = 0;
-		for (String line: lines) {
-			maxTabs = Math.max(maxTabs, countTabs(line));
+	    List<String[]> parsedCsv = null;
+		try {
+			parsedCsv = reader.readAll();
+		} catch (IOException e) {
+			throw new ParseException(e.getMessage(), -1);
 		}
+	    
+	    String[][] parsedCsvArray = parsedCsv.toArray(new String[][]{});
 		
-		int newLineIndex = 0;
-		for (int oldLineIndex = 0; oldLineIndex < lines.length; newLineIndex++, oldLineIndex++) {
-			lines[newLineIndex] = lines[oldLineIndex];
-			
-			//everything from here does not get executed when line length is ok
-			while(countTabs(lines[newLineIndex]) < maxTabs) {
-				try{
-					String nextLine = lines[++oldLineIndex];
-					lines[newLineIndex] += "\n" + nextLine;
-				}
-				catch (ArrayIndexOutOfBoundsException e) {
-					break;
-				}
-			}
-			//line is too long, error out
-			if (countTabs(lines[newLineIndex]) != maxTabs) {
-				int longestLineIndex = 0;
-				while(countTabs(lines[longestLineIndex]) < maxTabs)
-					longestLineIndex++;
-				throw new ParseException("Fehler bei der Behandlung von Zeilenumbrüchen. \n" + 
-						"In der Eingabe wurden (z.B. in Zeile " + (longestLineIndex+1) + ") " + (maxTabs+1) + " Spalten erkannt, "+
-						" in Zeile " + (newLineIndex+1) + " scheint die Spaltenanzahl anders zu sein. \n" +
-						"1. Wurde die Eingabe wirklich aus Excel herauskopiert? \n" +
-						"2. Falls die erkannte Anzahl der Spaltennicht stimmt, überprüfen Sie  Zeile " + (longestLineIndex+1) + " auf Unregelmäßigkeiten.\n" +
-						"3. Als letztes können Sie Zeile " + (newLineIndex+1) + " auf Unregelmäßigkeiten überprüfen.", newLineIndex+1);
-			}
-		}
-		lines = Arrays.copyOf(lines, newLineIndex);
-		return lines;
+		return parsedCsvArray;
 	}
-	
 	
 	
 	/**
-	 * Returns the input differently formatted. First index of returned array is
-	 * the column index, second is the line index.
+	 * removes asterisks and whitespace from the beginning and end of each cell.
+	 * @param lines
+	 */
+	private static void cleanCells(String[][] lines) {
+		for (String[] line: lines) 
+			for (int i = 0; i < line.length; i++) 
+				line[i] = line[i].replace("*", "").trim();
+	}
+	
+	
+	/**
+	 * Flips the input array, i.e. mirrors it at its 
+	 * upperleft-lowerright-diagonal.
 	 * @param input
 	 * @return
+	 * @throws ParseException 
 	 */
-	private static String[][] formatInput(String[] lines) {
-		int columncount = 1 + countTabs(lines[0]);
-		String[][] columns = new String[columncount][lines.length];
-		
+	private static String[][] flip2DArray(String[][] lines) throws ParseException {
+		int numColumns = lines[0].length;
+		String[][] columns = new String[numColumns][lines.length];
 		for (int i = 0; i < lines.length; i++) {
-			String[] linesplit = lines[i].split("\t");
-			for (int j = 0; j < columncount; j++) {
-				if (j < linesplit.length)
-					columns[j][i] = linesplit[j].trim();
-				else
-					columns[j][i] = "";
-			}
+			if (lines[i].length != lines[0].length)
+				throw new ParseException("Fehler beim Verarbeiten der Eingabe.\n" +
+						"Vermutlich befinden sich in Zeile " + (i+1) + " Anführungszeichen (\"),\n" +
+						"bitte entfernen Sie diese.", -1);
+			for (int j = 0; j < numColumns; j++)
+				columns[j][i] = lines[i][j];
 		}
+		
 		return columns;
 	}
-	
-	
-	/** 
-	 * Returns the number of occurrences of the '\t' character in the specified String
-	 */
-	private static int countTabs(String text) {
-		return (text.length() - text.replace("\t", "").length());
-	}
-	
 	
 	
 	/**
