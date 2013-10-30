@@ -14,7 +14,12 @@ public class TiteldatenProcessor extends AbstractProcessor{
 		}
 		
 		String code = Main.getSourceCode("http://dispatch.opac.d-nb.de/CMD?ACT=SRCHM&IKT0=8506&TRM0="+zdbid);
-		//TODO: catch indexOf returns -1
+		
+		if (code.contains("Leider keine Treffer")) {
+			table.newCell("Diese ZDB-ID wurde nicht in der ZDB gefunden.");
+			return;
+		}
+		
 		code = code.substring(code.indexOf("Titel:"));
 
 		getOnlineLinkAndID(code);

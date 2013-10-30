@@ -45,11 +45,13 @@ public class BestandsdatenProcessor extends AbstractProcessor{
 		if (zdbid.equals("")) {
 			return;
 		}
-		table.newCell(SimpleTable.toLink("http://dispatch.opac.d-nb.de/PRS=HOL/CMD?ACT=SRCHM&IKT0=8506&TRM0="+zdbid+"&HLIB=255&PRSHOLDINGOPTION=BER", "Berlin-Bestand"));
+		table.newCell(SimpleTable.toLink("http://dispatch.opac.d-nb.de/PRS=HOL/CMD?ACT=SRCHM&IKT0=8506&TRM0=120658-5&HLIB=255&PRSHOLDINGOPTION=BER", "Berlin-Bestand"));
 		
 		
 		String code = Main.getSourceCode("http://dispatch.opac.d-nb.de/PRS=HOL/CMD?ACT=SRCHM&IKT0=8506&TRM0="+zdbid+"&HLIB=255&PRSHOLDINGOPTION=BER&PRSHOLDINGOPTION=BAY");
 		
+		if (code.contains("ist im Index nicht vorhanden"))
+			return; //TiteldatenProcessor adds a note that the ZDBID is missing from the ZDB
 		
 		Pattern pattern = Pattern.compile(".*<TABLE>.*?Bibliothek: B.*?</TABLE>");
 		Matcher matcher = pattern.matcher(code);
